@@ -15,12 +15,14 @@ from schema import schema
 
 @app.route('/', methods=['POST', 'GET'])
 def hello_world():
+    '''Simple forom for dummie user creations'''
     print(User.query.all())
     if request.method == 'POST':
         user = User(name = request.form['name'])
         user.save()
     return render_template('form.html')
 
+'''GraphQL Endpoint'''
 app.add_url_rule(
     '/graphql',
     view_func=GraphQLView.as_view(
