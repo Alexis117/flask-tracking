@@ -1,5 +1,4 @@
 from app import db
-from sqlalchemy.dialects.postgresql import UUID
 import uuid
 
 class User(db.Model):
@@ -11,6 +10,7 @@ class User(db.Model):
         return f'<User {self.id}>'
 
     def save(self):
+        '''Simplifying orm savings'''
         if not self.id:
             db.session.add(self)
         db.session.commit()
