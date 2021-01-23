@@ -38,10 +38,11 @@ def hello_world():
 class AuthorizationMiddleware(object):
     def resolve(self, next, root, info, **args):
         '''Middleware Authorization logic before execute every mutation/query'''
+        info.context = {'request':request}
         if request.headers.get('Authorization'):
             decoded_user = jwt.decode(request.headers.get('Authorization'), 'alexis', algorithms=['HS256'])
             user = User.query.get(decoded_user['user'])
-            info.context = {'request':request, 'user':user}
+            info.context['user'] = user
         return next(root, info, **args)
 
 '''GraphQL Endpoint'''
@@ -52,19 +53,25 @@ app.add_url_rule(
         schema=schema,
         graphiql=True,
         middleware=[AuthorizationMiddleware()], #Apply middleware for global authorization
-        #get_context=lambda: {'request': request} Modifyng context
     )
 )
 
 class CustomSubscriptionServer(GeventSubscriptionServer):
-    def handle(self, ws, request_context=None):
-        connection_context = GeventConnectionContext(ws, request_context)
-        #connection_context.send(json.dumps({"type": "websocket.accept", "subprotocol": "graphql-ws"}))
-        return super().handle(ws, request_context)
+    def on_start(self, connection_context, op_id, params):
+        '''Handling errors returned by the execution result before we reach the returned observable'''
+        try:
+            execution_result = self.execute(connection_context.request_context, params)
+            if execution_result.errors:
+                self.send_error(connection_context, op_id, str(execution_result.errors[0]))
+        except Exception as e:
+            self.send_error(connection_context, op_id, str(e))
+        return super().on_start(connection_context, op_id, params)
 
-    def on_message(self, connection_context, message):
-        print(message)
-        return super().on_message(connection_context, message)
+    def execute(self, request_context, params):
+        '''Sending context to the graphql subscriptions execution'''
+        params['context_value'] = {'request' : request_context}
+        return graphql(
+            self.schema, **dict(params, allow_subscriptions=True))
 
 sockets = Sockets(app)
 subscription_server = CustomSubscriptionServer(schema)
@@ -72,5 +79,7 @@ app.app_protocol = lambda environ_path_info: 'graphql-ws'
 
 @sockets.route('/graphql')
 def echo_socket(ws):
-    subscription_server.handle(ws)
+    subscription_server.handle(ws, request)
     return []
+
+from graphql import graphql, format_error

@@ -5,6 +5,7 @@ from models import User
 import jwt 
 from rx import Observable
 from app import geolocation_subject
+from utils import login_required
 
 class UserObject(SQLAlchemyObjectType):
     class Meta:
@@ -33,6 +34,7 @@ class Login(graphene.Mutation):
     message = graphene.String()
     token = graphene.String()
 
+    @login_required
     def mutate(root, info, email, password):
         user = User.query.filter_by(email=email).first()
         if user is None:
