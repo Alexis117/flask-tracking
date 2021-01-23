@@ -1,4 +1,4 @@
-# Flask Tracking API
+# Flask Geolocation Tracking API
 
 GraphQL API built with Python using Flask for register users and allow them to track their positions.
 
