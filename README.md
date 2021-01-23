@@ -4,7 +4,7 @@ An API built with Python, Flask and GraphQL for register users and allow them to
 
 This API works together with an Expo - React Native App to share geolocation among users.
 
-##Usage
+## Usage
 
 Run this app using gunicorn and the custom worker from gevent, otherwise websockets won`t work.
 
