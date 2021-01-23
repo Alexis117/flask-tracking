@@ -4,11 +4,16 @@ from graphene_sqlalchemy import SQLAlchemyObjectType, SQLAlchemyConnectionField
 from models import User
 import jwt 
 from rx import Observable
-from app import subject_test
+from app import geolocation_subject
 
 class UserObject(SQLAlchemyObjectType):
     class Meta:
         model = User
+
+class GeolocationType(graphene.ObjectType):
+    uuid =  graphene.ID()
+    latitude = graphene.String()
+    longitude = graphene.String()
 
 class Query(graphene.ObjectType):
     node = relay.Node.Field()
@@ -16,6 +21,7 @@ class Query(graphene.ObjectType):
     all_users = graphene.List(UserObject)
 
     def resolve_all_users(self, info, **kwargs):
+        print(info.context)
         return User.query.all()
 
 class Login(graphene.Mutation):
@@ -28,7 +34,7 @@ class Login(graphene.Mutation):
     token = graphene.String()
 
     def mutate(root, info, email, password):
-        user = User.query.filter_by(email=name).first()
+        user = User.query.filter_by(email=email).first()
         if user is None:
             return {'success':False, 'token':'', 'message':'User does not exist'}
         if not user.check_password(password):
@@ -52,8 +58,8 @@ class SignUp(graphene.Mutation):
             raise Exception('Email already used!')
         user = User(name = name, email = email, last_name = last_name)
         user.set_password(password)
-        user.save()
         token = jwt.encode({'user': user.id}, 'alexis', algorithm='HS256')
+        user.save()
         return {'success':True, 'token':token}
 
 class Mutation(graphene.ObjectType):
@@ -61,9 +67,9 @@ class Mutation(graphene.ObjectType):
     sign_up = SignUp.Field()
 
 class Subscription(graphene.ObjectType):
-    count_seconds = graphene.String()
+    get_location = graphene.Field(GeolocationType, uuid=graphene.ID())
 
-    def resolve_count_seconds(root, info):
-        return subject_test
+    def resolve_get_location(root, info, uuid):
+        return geolocation_subject.filter(lambda x: x.uuid == uuid)
 
 schema = graphene.Schema(query=Query, mutation=Mutation, subscription=Subscription)

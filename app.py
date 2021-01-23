@@ -8,33 +8,40 @@ from graphql_ws.gevent import GeventSubscriptionServer, GeventConnectionContext
 from graphql.backend import GraphQLCoreBackend
 from flask_sockets import Sockets
 from rx.subjects import Subject
+import jwt 
+import json
 
-subject_test = Subject()
+geolocation_subject = Subject()
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/flask.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///flask.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
 app.config['FLASK_ENV'] = True
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
 from models import User
-from schema import schema
+from schema import schema, GeolocationType
+from graphene import Context
 
 @app.route('/', methods=['POST', 'GET'])
 def hello_world():
-    '''Simple form for dummie user creations'''
+    '''Simple form for dummie geolocation data'''
     if request.method == 'POST':
-        print('-----')
-        print(subject_test)
-        subject_test.on_next("A")
-        user = User(name = request.form['name'])
-        user.save()
+        uuid = request.form['uuid']
+        latitude = request.form['latitude']
+        longitude = request.form['longitude']
+        geolocation = GeolocationType(uuid=uuid, latitude=latitude, longitude=longitude)
+        geolocation_subject.on_next(geolocation)
     return render_template('form.html')
 
 class AuthorizationMiddleware(object):
     def resolve(self, next, root, info, **args):
-        '''Middleware logic before execute every mutation/query'''
+        '''Middleware Authorization logic before execute every mutation/query'''
+        if request.headers.get('Authorization'):
+            decoded_user = jwt.decode(request.headers.get('Authorization'), 'alexis', algorithms=['HS256'])
+            user = User.query.get(decoded_user['user'])
+            info.context = {'request':request, 'user':user}
         return next(root, info, **args)
 
 '''GraphQL Endpoint'''
@@ -44,12 +51,10 @@ app.add_url_rule(
         'graphql',
         schema=schema,
         graphiql=True,
-        #middleware=[AuthorizationMiddleware()], Apply middleware for global authorization
+        middleware=[AuthorizationMiddleware()], #Apply middleware for global authorization
         #get_context=lambda: {'request': request} Modifyng context
     )
 )
-
-import json
 
 class CustomSubscriptionServer(GeventSubscriptionServer):
     def handle(self, ws, request_context=None):
@@ -69,10 +74,3 @@ app.app_protocol = lambda environ_path_info: 'graphql-ws'
 def echo_socket(ws):
     subscription_server.handle(ws)
     return []
-
-if __name__ == '__main__':
-    from gevent.pywsgi import WSGIServer
-    from geventwebsocket.handler import WebSocketHandler
-
-    http_server = WSGIServer(('',5000), app, handler_class=WebSocketHandler)
-    http_server.serve_forever()
