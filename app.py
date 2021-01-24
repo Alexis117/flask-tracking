@@ -8,8 +8,10 @@ from graphql_ws.gevent import GeventSubscriptionServer, GeventConnectionContext
 from graphql.backend import GraphQLCoreBackend
 from flask_sockets import Sockets
 from rx.subjects import Subject
+from rx import Observable
 import jwt 
 import json
+from decouple import config
 
 geolocation_subject = Subject()
 
@@ -19,6 +21,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
 app.config['FLASK_ENV'] = True
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
+JWT_SECRET = config('JWT_SECRET')
 
 from models import User
 from schema import schema, GeolocationType
@@ -40,7 +43,7 @@ class AuthorizationMiddleware(object):
         '''Middleware Authorization logic before execute every mutation/query'''
         info.context = {'request':request}
         if request.headers.get('Authorization'):
-            decoded_user = jwt.decode(request.headers.get('Authorization'), 'alexis', algorithms=['HS256'])
+            decoded_user = jwt.decode(request.headers.get('Authorization'), JWT_SECRET, algorithms=['HS256'])
             user = User.query.get(decoded_user['user'])
             info.context['user'] = user
         return next(root, info, **args)
@@ -61,17 +64,23 @@ class CustomSubscriptionServer(GeventSubscriptionServer):
         '''Handling errors returned by the execution result before we reach the returned observable'''
         try:
             execution_result = self.execute(connection_context.request_context, params)
-            if execution_result.errors:
-                self.send_error(connection_context, op_id, str(execution_result.errors[0]))
         except Exception as e:
             self.send_error(connection_context, op_id, str(e))
+        if not isinstance(execution_result, Observable):
+            self.send_error(connection_context, op_id, str(execution_result.errors[0]))            
         return super().on_start(connection_context, op_id, params)
 
     def execute(self, request_context, params):
         '''Sending context to the graphql subscriptions execution'''
-        params['context_value'] = {'request' : request_context}
+        params['context_value'] = {'authToken' : request_context}
         return graphql(
             self.schema, **dict(params, allow_subscriptions=True))
+    
+    def on_connection_init(self, connection_context, op_id, payload):
+        '''Get AuthToken from the first message from client'''
+        #It would be better add a new attribute to connection_context object for avoid to use request_context
+        connection_context.request_context = payload
+        return super().on_connection_init(connection_context, op_id, payload)
 
 sockets = Sockets(app)
 subscription_server = CustomSubscriptionServer(schema)

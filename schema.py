@@ -3,8 +3,7 @@ from graphene import relay
 from graphene_sqlalchemy import SQLAlchemyObjectType, SQLAlchemyConnectionField
 from models import User
 import jwt 
-from rx import Observable
-from app import geolocation_subject
+from app import geolocation_subject, JWT_SECRET
 from utils import login_required
 
 class UserObject(SQLAlchemyObjectType):
@@ -22,7 +21,6 @@ class Query(graphene.ObjectType):
     all_users = graphene.List(UserObject)
 
     def resolve_all_users(self, info, **kwargs):
-        print(info.context)
         return User.query.all()
 
 class Login(graphene.Mutation):
@@ -34,14 +32,13 @@ class Login(graphene.Mutation):
     message = graphene.String()
     token = graphene.String()
 
-    @login_required
     def mutate(root, info, email, password):
         user = User.query.filter_by(email=email).first()
         if user is None:
             return {'success':False, 'token':'', 'message':'User does not exist'}
         if not user.check_password(password):
             return {'success':False, 'token':'', 'message':'Password is wrong'}
-        token = jwt.encode({'user': user.id}, 'alexis', algorithm='HS256')
+        token = jwt.encode({'user': user.id}, JWT_SECRET, algorithm='HS256')
         return {'success':True, 'token':token, 'message':'Logged In!'}
 
 class SignUp(graphene.Mutation):
