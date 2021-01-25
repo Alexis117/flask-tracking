@@ -61,13 +61,29 @@ class SignUp(graphene.Mutation):
         user.save()
         return {'success':True, 'token':token}
 
+class UpdateLocation(graphene.Mutation):
+    class Arguments:
+        longitude = graphene.String()
+        latitude = graphene.String()
+
+    success = graphene.Boolean()
+
+    @login_required
+    def mutate(root, info, latitude, longitude):
+        user = info.context.get('user')
+        geolocation = GeolocationType(latitude=latitude, longitude=longitude, uuid=user.id)
+        geolocation_subject.on_next(geolocation)
+        return {'success':True}
+
 class Mutation(graphene.ObjectType):
     login = Login.Field()
     sign_up = SignUp.Field()
+    update_location = UpdateLocation.Field()
 
 class Subscription(graphene.ObjectType):
-    get_location = graphene.Field(GeolocationType, uuid=graphene.ID())
+    get_location = graphene.Field(GeolocationType, uuid=graphene.String())
 
+    @login_required
     def resolve_get_location(root, info, uuid):
         return geolocation_subject.filter(lambda x: x.uuid == uuid)
 

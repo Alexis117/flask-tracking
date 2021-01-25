@@ -4,8 +4,8 @@ from flask import request
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_graphql import GraphQLView
-from graphql_ws.gevent import GeventSubscriptionServer, GeventConnectionContext
-from graphql.backend import GraphQLCoreBackend
+from graphql_ws.gevent import GeventSubscriptionServer
+from graphql import graphql
 from flask_sockets import Sockets
 from rx.subjects import Subject
 from rx import Observable
@@ -28,7 +28,7 @@ from schema import schema, GeolocationType
 from graphene import Context
 
 @app.route('/', methods=['POST', 'GET'])
-def hello_world():
+def geolocation():
     '''Simple form for dummie geolocation data'''
     if request.method == 'POST':
         uuid = request.form['uuid']
@@ -43,7 +43,7 @@ class AuthorizationMiddleware(object):
         '''Middleware Authorization logic before execute every mutation/query'''
         info.context = {'request':request}
         if request.headers.get('Authorization'):
-            decoded_user = jwt.decode(request.headers.get('Authorization'), JWT_SECRET, algorithms=['HS256'])
+            decoded_user = jwt.decode(request.headers.get('Authorization'), JWT_SECRET, algorithms=['HS256'], options={'require_exp':False})
             user = User.query.get(decoded_user['user'])
             info.context['user'] = user
         return next(root, info, **args)
@@ -72,14 +72,18 @@ class CustomSubscriptionServer(GeventSubscriptionServer):
 
     def execute(self, request_context, params):
         '''Sending context to the graphql subscriptions execution'''
-        params['context_value'] = {'authToken' : request_context}
+        params['context_value'] = request_context
         return graphql(
             self.schema, **dict(params, allow_subscriptions=True))
     
     def on_connection_init(self, connection_context, op_id, payload):
         '''Get AuthToken from the first message from client'''
         #It would be better add a new attribute to connection_context object for avoid to use request_context
-        connection_context.request_context = payload
+        connection_context.request_context = {}
+        if payload.get('authToken'):
+            decoded_user = jwt.decode(payload.get('authToken'), JWT_SECRET, algorithms=['HS256'], options={'require_exp':False})
+            user = User.query.get(decoded_user['user'])
+            connection_context.request_context['user'] = user
         return super().on_connection_init(connection_context, op_id, payload)
 
 sockets = Sockets(app)
@@ -90,5 +94,3 @@ app.app_protocol = lambda environ_path_info: 'graphql-ws'
 def echo_socket(ws):
     subscription_server.handle(ws, request)
     return []
-
-from graphql import graphql, format_error
