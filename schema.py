@@ -75,10 +75,26 @@ class UpdateLocation(graphene.Mutation):
         geolocation_subject.on_next(geolocation)
         return {'success':True}
 
+class DeleteUser(graphene.Mutation):
+    class Arguments:
+        id = graphene.String()
+    
+    success = graphene.Boolean()
+    user = graphene.Field(UserObject)
+    message = graphene.String()
+
+    def mutate(root, info, id):
+        user = User.query.get(id)
+        if user is None:
+            return {'success':False, 'user':None, 'message':'User does not exist!'}
+        user.delete()
+        return {'success':True, 'user':user, 'message':'Successfully deleted user'}
+
 class Mutation(graphene.ObjectType):
     login = Login.Field()
     sign_up = SignUp.Field()
     update_location = UpdateLocation.Field()
+    delete_user = DeleteUser.Field()
 
 class Subscription(graphene.ObjectType):
     get_location = graphene.Field(GeolocationType, uuid=graphene.String())

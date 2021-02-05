@@ -18,6 +18,12 @@ class User(db.Model):
         if not self.id:
             db.session.add(self)
         db.session.commit()
+
+    def delete(self):
+        '''Simplifying orm removings'''
+        db.session.delete(self)
+        db.session.commit()
+
     
     def set_password(self, password):
         self.password = generate_password_hash(password)

@@ -13,7 +13,6 @@ import jwt
 import json
 from decouple import config
 
-geolocation_subject = Subject()
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///flask.db'
@@ -23,12 +22,15 @@ db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 JWT_SECRET = config('JWT_SECRET')
 
+geolocation_subject = Subject() #Subject to subscribe geolocation events
+
+
 from models import User
 from schema import schema, GeolocationType
 from graphene import Context
 
 @app.route('/', methods=['POST', 'GET'])
-def geolocation():
+def geolocation_form():
     '''Simple form for dummie geolocation data'''
     if request.method == 'POST':
         uuid = request.form['uuid']
