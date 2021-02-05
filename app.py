@@ -38,7 +38,7 @@ def geolocation_form():
         longitude = request.form['longitude']
         geolocation = GeolocationType(uuid=uuid, latitude=latitude, longitude=longitude)
         geolocation_subject.on_next(geolocation)
-    return render_template('form.html')
+    return render_template('geolocation_form.html')
 
 class AuthorizationMiddleware(object):
     def resolve(self, next, root, info, **args):
@@ -62,6 +62,8 @@ app.add_url_rule(
 )
 
 class CustomSubscriptionServer(GeventSubscriptionServer):
+    '''Overriding the gevent subscription server class for custom context and middleware setting'''
+
     def on_start(self, connection_context, op_id, params):
         '''Handling errors returned by the execution result before we reach the returned observable'''
         try:

@@ -6,6 +6,7 @@ import jwt
 from app import geolocation_subject, JWT_SECRET
 from utils import login_required
 
+'''Schema'''
 class UserObject(SQLAlchemyObjectType):
     class Meta:
         model = User
@@ -15,6 +16,7 @@ class GeolocationType(graphene.ObjectType):
     latitude = graphene.String()
     longitude = graphene.String()
 
+'''Queries'''
 class Query(graphene.ObjectType):
     node = relay.Node.Field()
     #all_users = SQLAlchemyConnectionField(UserObject) Makes an automated node connection
@@ -23,6 +25,7 @@ class Query(graphene.ObjectType):
     def resolve_all_users(self, info, **kwargs):
         return User.query.all()
 
+'''Muation Classes'''
 class Login(graphene.Mutation):
     class Arguments:
         password = graphene.String()
@@ -96,6 +99,7 @@ class Mutation(graphene.ObjectType):
     update_location = UpdateLocation.Field()
     delete_user = DeleteUser.Field()
 
+'''Subscriptions'''
 class Subscription(graphene.ObjectType):
     get_location = graphene.Field(GeolocationType, uuid=graphene.String())
 
