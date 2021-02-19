@@ -1,7 +1,7 @@
 import graphene
 from graphene import relay
 from graphene_sqlalchemy import SQLAlchemyObjectType, SQLAlchemyConnectionField
-from graphene_sqlalchemy_filter import FilterSet
+from sqlalchemy import or_
 
 from models import User
 from utils import login_required
@@ -14,13 +14,6 @@ class UserObject(SQLAlchemyObjectType):
     class Meta:
         model = User
 
-class UserFilter(FilterSet):
-    class Meta:
-        model = User
-        fields = {
-            'name': ['contains']
-        }
-
 class GeolocationType(graphene.ObjectType):
     uuid =  graphene.ID()
     latitude = graphene.String()
@@ -29,18 +22,16 @@ class GeolocationType(graphene.ObjectType):
 '''Queries'''
 class Query(graphene.ObjectType):
     node = relay.Node.Field()
-    all_users_filter = graphene.List(UserObject, filters=UserFilter())
+    all_users_filter = graphene.List(UserObject, search_string=graphene.String())
     all_users = graphene.List(UserObject)
 
     def resolve_all_users(self, info, **kwargs):
         return User.query.all()
     
-    def resolve_all_users_filter(self, info, filters=None):
-        query = User.query
-        if filters is not None:
-            if filters.get('name_contains') is not None:
-                query = UserFilter.filter(info, query, filters)
-        return query.all()
+    def resolve_all_users_filter(self, info, search_string=None):
+        if search_string is not None:
+            return User.query.filter(or_(User.name.contains(search_string), User.last_name.contains(search_string)))
+        return User.query.all()
 
 '''Muation Classes'''
 class Login(graphene.Mutation):
