@@ -50,15 +50,16 @@ class Login(graphene.Mutation):
     success = graphene.Boolean()
     message = graphene.String()
     token = graphene.String()
+    user = graphene.Field(UserObject)
 
     def mutate(root, info, email, password):
         user = User.query.filter_by(email=email).first()
         if user is None:
-            return {'success':False, 'token':'', 'message':'User does not exist'}
+            return {'success':False, 'token':'', 'message':'User does not exist', 'user':None}
         if not user.check_password(password):
-            return {'success':False, 'token':'', 'message':'Password is wrong'}
+            return {'success':False, 'token':'', 'message':'Password is wrong', 'user':None}
         token = jwt.encode({'user': user.id}, JWT_SECRET, algorithm='HS256')
-        return {'success':True, 'token':token, 'message':'Logged In!'}
+        return {'success':True, 'token':token, 'message':'Logged In!', 'user':user}
 
 class SignUp(graphene.Mutation):
     class Arguments:
@@ -69,6 +70,7 @@ class SignUp(graphene.Mutation):
 
     success = graphene.Boolean()
     token = graphene.String()
+    user = graphene.Field(UserObject)
 
     def mutate(root, info, name, password, last_name, email):
         user = User.query.filter_by(email=email).first()
@@ -78,7 +80,7 @@ class SignUp(graphene.Mutation):
         user.set_password(password)
         token = jwt.encode({'user': user.id}, 'alexis', algorithm='HS256')
         user.save()
-        return {'success':True, 'token':token}
+        return {'success':True, 'token':token, 'user':user}
 
 class UpdateLocation(graphene.Mutation):
     class Arguments:
