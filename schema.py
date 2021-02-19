@@ -38,7 +38,8 @@ class Query(graphene.ObjectType):
     def resolve_all_users_filter(self, info, filters=None):
         query = User.query
         if filters is not None:
-            query = UserFilter.filter(info, query, filters)
+            if filters.get('name_contains') is not None:
+                query = UserFilter.filter(info, query, filters)
         return query.all()
 
 '''Muation Classes'''
