@@ -127,6 +127,7 @@ class UpdateLastUserLocation(graphene.Mutation):
         user = info.context.get('user')
         user.latitude = latitude
         user.longitude = longitude
+        user.save()
         return {'success':True}
 
 class Mutation(graphene.ObjectType):
