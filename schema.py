@@ -130,6 +130,7 @@ class UpdateLastUserLocation(graphene.Mutation):
         user.latitude = latitude
         user.longitude = longitude
         return {'success':True}
+        
 class Mutation(graphene.ObjectType):
     login = Login.Field()
     sign_up = SignUp.Field()
