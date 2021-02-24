@@ -123,7 +123,7 @@ class UpdateLastUserLocation(graphene.Mutation):
     success = graphene.Boolean()
 
     @login_required
-    def mutate(root, info, id, latitude, longitude):
+    def mutate(root, info, latitude, longitude):
         user = info.context.get('user')
         user.latitude = latitude
         user.longitude = longitude
