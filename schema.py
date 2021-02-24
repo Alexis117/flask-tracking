@@ -19,11 +19,17 @@ class GeolocationType(graphene.ObjectType):
     latitude = graphene.String()
     longitude = graphene.String()
 
+class LastLocationType(graphene.ObjectType):
+    is_sharing = graphene.Boolean()
+    latitude = graphene.String()
+    longitude = graphene.String()
+
 '''Queries'''
 class Query(graphene.ObjectType):
     node = relay.Node.Field()
     all_users_filter = graphene.List(UserObject, search_string=graphene.String())
     all_users = graphene.List(UserObject)
+    is_sharing_location = graphene.Field(LastLocationType, id=graphene.String())
 
     def resolve_all_users(self, info, **kwargs):
         return User.query.all()
@@ -32,8 +38,14 @@ class Query(graphene.ObjectType):
         if search_string is not None:
             return User.query.filter(or_(User.name.contains(search_string), User.last_name.contains(search_string)))
         return User.query.all()
+    
+    def resolve_is_sharing_location(self, info, id):
+        user = User.query.get(id)
+        if user is None:
+            raise Exception('User does not exist')
+        return {'is_sharing':user.sharing_location, 'latitude':user.latitude, 'longitude':user.longitude}
 
-'''Muation Classes'''
+'''Mutation Classes'''
 class Login(graphene.Mutation):
     class Arguments:
         password = graphene.String()

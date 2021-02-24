@@ -9,6 +9,9 @@ class User(db.Model):
     name = db.Column(db.String(80))
     last_name = db.Column(db.String(80))
     password = db.Column(db.String(20))
+    latitude = db.Column(db.String(20))
+    longitude = db.Column(db.String(20))
+    sharing_location = db.Column(db.Boolean(), default=False, nullable=False)
 
     def __repr__(self):
         return f'<User {self.id}>'
