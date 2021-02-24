@@ -130,12 +130,31 @@ class UpdateLastUserLocation(graphene.Mutation):
         user.save()
         return {'success':True}
 
+class UpdateSharingStatus(graphene.Mutation):
+    class Arguments:
+        activate = graphene.Boolean()
+    
+    message = graphene.String()
+
+    @login_required
+    def mutate(root, info, activate):
+        user = info.context.get('user')
+        if activate:
+            user.sharing_location = True
+            response = {'message': 'Sharing location started'}
+        else:
+            user.sharing_location = False
+            response = {'message': 'Sharing location stopped'}
+        user.save()
+        return response
+
 class Mutation(graphene.ObjectType):
     login = Login.Field()
     sign_up = SignUp.Field()
     update_location = UpdateLocation.Field()
     delete_user = DeleteUser.Field()
     update_last_user_location = UpdateLastUserLocation.Field()
+    update_sharing_status = UpdateSharingStatus.Field()
 
 '''Subscriptions'''
 class Subscription(graphene.ObjectType):
