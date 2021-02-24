@@ -115,11 +115,27 @@ class DeleteUser(graphene.Mutation):
         user.delete()
         return {'success':True, 'user':user, 'message':'Successfully deleted user'}
 
+class UpdateLastUserLocation(graphene.Mutation):
+    class Arguments:
+        id = graphene.String()
+        latitude = graphene.String()
+        longitude = graphene.String()
+    
+    success = graphene.Boolean()
+
+    def mutate(root, info, id, latitude, longitude):
+        user = User.query.get(id)
+        if user is None:
+            raise Exception('User does not exists')
+        user.latitude = latitude
+        user.longitude = longitude
+        return {'success':True}
 class Mutation(graphene.ObjectType):
     login = Login.Field()
     sign_up = SignUp.Field()
     update_location = UpdateLocation.Field()
     delete_user = DeleteUser.Field()
+    update_last_user_location = UpdateLastUserLocation.Field()
 
 '''Subscriptions'''
 class Subscription(graphene.ObjectType):
